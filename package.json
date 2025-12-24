@@ -28,11 +28,13 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "helmet": "^8.1.0",
+    "mongoose": "^9.0.2",
     "morgan": "^1.10.1",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
+    "@types/mongoose": "^5.11.97",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "nodemon": "^3.1.11",

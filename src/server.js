@@ -1,9 +1,14 @@
 require('dotenv').config();
+
 const app = require('./app');
 const logger = require('./config/logger');
+const connectDB = require('./config/database');
 
 const PORT = process.env.PORT;
 const HOST = process.env.HOST;
+
+// Connect the database
+connectDB();
 
 // Start server
 const server = app.listen(PORT, HOST, () => {
