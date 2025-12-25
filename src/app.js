@@ -9,6 +9,7 @@ const logger = require('./config/logger');
 const errorHandler = require('./middleware/errorHandler');
 const authRouter = require('./routes/auth.route');
 const restaurantRouter = require('./routes/restaurant.route');
+const uploadRouter = require('./routes/upload.route');
 
 const app = express();
 
@@ -25,6 +26,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: logger.stream }));
 
+// Serving static files from the public directory
+app.use('/uploads', express.static('public/uploads'));
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -38,6 +42,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/restaurants', restaurantRouter);
+app.use('/api/upload', uploadRouter);
 
 // 404 handler
 app.use(/.*/, (req, res) => {

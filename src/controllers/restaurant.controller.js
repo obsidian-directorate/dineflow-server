@@ -1,5 +1,30 @@
 const Restaurant = require('../models/Restaurant');
 const AppError = require('../utils/appError');
+const { ensureUploadsDir, getImageURL, deleteOldImage } = require('../utils/imageUtils');
+
+ensureUploadsDir();
+
+// Handle image uploads
+const processZoneImages = (req, zones) => {
+  if (!zones || !req.files) return zones;
+
+  const imageFiles = req.files;
+
+  return zones.map((zone, index) => {
+    // If there are files to upload for this zone
+    if (imageFiles[`zones[${index}][backgroundImage]`]) {
+      const file = imageFiles[`zones[${index}][backgroundImage]`][0];
+      zone.backgroundImage = getImageURL(req, file.filename);
+    } else if (zone.backgroundImage && typeof zone.backgroundImage == 'string') {
+      // Keep if URL exists
+      zone.backgroundImage = zone.backgroundImage;
+    } else {
+      // Delete the field if empty
+      delete zone.backgroundImage;
+    }
+    return zone;
+  });
+};
 
 // @desc    Create restaurant
 // @route   POST /api/restaurants
@@ -7,10 +32,27 @@ const AppError = require('../utils/appError');
 const createRestaurant = async (req, res, next) => {
   try {
     // Add owner_id from logged in user
-    const restaurantData = {
+    let restaurantData = {
       ...req.body,
-      owner_id: req.user.role === 'admin' ? req.body.owner_id || req.user.id : req.user.id,
     };
+
+    // Parse zones if string (from form-data)
+    if (typeof restaurantData.zones === 'string') {
+      try {
+        restaurantData.zones = JSON.parse(restaurantData.zones);
+      } catch (error) {
+        return next(new AppError('Invalid zones format', 400));
+      }
+    }
+
+    // Process images
+    if (restaurantData.zones && req.files) {
+      restaurantData.zones = processZoneImages(req, restaurantData.zones);
+    }
+
+    // Owner ID
+    restaurantData.owner_id =
+      req.user.role === 'admin' ? req.body.owner_id || req.user.id : req.user.id;
 
     const restaurant = await Restaurant.create(restaurantData);
 
@@ -123,7 +165,16 @@ const updateRestaurant = async (req, res, next) => {
 // @access  Private (Owner)
 const updateFloorPlan = async (req, res, next) => {
   try {
-    const { zones } = req.body;
+    let { zones } = req.body;
+
+    // Parse zones if string
+    if (typeof zones === 'string') {
+      try {
+        zones = JSON.parse(zones);
+      } catch (error) {
+        return next(new AppError('Invalid zones format', 400));
+      }
+    }
 
     const restaurant = await Restaurant.findById(req.params.id);
     if (!restaurant) {
@@ -134,6 +185,23 @@ const updateFloorPlan = async (req, res, next) => {
     if (restaurant.owner_id.toString() !== req.user.id) {
       return next(new AppError('Chỉ chủ nhà hàng mới được cập nhật sơ đồ', 403));
     }
+
+    // Process new images
+    if (zones && req.files) {
+      zones = processZoneImages(req, zones);
+    }
+
+    // Delete old images of replaced zones
+    restaurant.zones.forEach(zone => {
+      if (zone.backgroundImage) {
+        const zoneStillExists = zones.some(
+          z => z.zoneName === zone.zoneName && z.backgroundImage === zone.backgroundImage
+        );
+        if (!zoneStillExists) {
+          deleteOldImage(zone.backgroundImage);
+        }
+      }
+    });
 
     restaurant.zones = zones;
     await restaurant.save();
