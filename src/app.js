@@ -6,6 +6,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const logger = require('./config/logger');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
@@ -41,19 +42,6 @@ app.use(/.*/, (req, res) => {
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
-  logger.error('Unhandled error:', {
-    message: err.message,
-    stack: err.stack,
-    path: req.path,
-    method: req.method,
-  });
-
-  res.status(err.status || 500).json({
-    status: 'error',
-    message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
-});
+app.use(errorHandler);
 
 module.exports = app;
