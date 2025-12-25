@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const logger = require('./config/logger');
 const errorHandler = require('./middleware/errorHandler');
+const authRouter = require('./routes/auth.route');
 
 const app = express();
 
@@ -32,6 +33,9 @@ app.get('/health', (req, res) => {
     environment: process.env.NODE_ENV,
   });
 });
+
+// Routes
+app.use('/api/auth', authRouter);
 
 // 404 handler
 app.use(/.*/, (req, res) => {
