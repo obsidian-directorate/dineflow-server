@@ -8,6 +8,7 @@ require('dotenv').config();
 const logger = require('./config/logger');
 const errorHandler = require('./middleware/errorHandler');
 const authRouter = require('./routes/auth.route');
+const restaurantRouter = require('./routes/restaurant.route');
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRouter);
+app.use('/api/restaurants', restaurantRouter);
 
 // 404 handler
 app.use(/.*/, (req, res) => {
