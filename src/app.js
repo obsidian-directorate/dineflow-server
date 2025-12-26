@@ -7,9 +7,12 @@ require('dotenv').config();
 
 const logger = require('./config/logger');
 const errorHandler = require('./middleware/errorHandler');
+
 const authRouter = require('./routes/auth.route');
 const restaurantRouter = require('./routes/restaurant.route');
 const uploadRouter = require('./routes/upload.route');
+const reservationRouter = require('./routes/reservation.route');
+const tableLockRouter = require('./routes/tablelock.routes');
 
 const app = express();
 
@@ -43,6 +46,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/restaurants', restaurantRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/reservations', reservationRouter);
+app.use('/api/tables', tableLockRouter);
 
 // 404 handler
 app.use(/.*/, (req, res) => {
