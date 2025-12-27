@@ -3,6 +3,7 @@ require('dotenv').config();
 const app = require('./app');
 const logger = require('./config/logger');
 const connectDB = require('./config/database');
+const { initSocketServer } = require('./sockets/socketServer');
 
 const PORT = process.env.PORT;
 const HOST = process.env.HOST;
@@ -17,6 +18,9 @@ const server = app.listen(PORT, HOST, () => {
   logger.colored.info(`🚀 Server running at http://${HOST}:${PORT}`);
   logger.colored.info(`📊 Health check: http://${HOST}:${PORT}/health`);
 });
+
+// Start Socket.io server
+initSocketServer(server);
 
 // Graceful shutdown handlers
 const shutdown = signal => {

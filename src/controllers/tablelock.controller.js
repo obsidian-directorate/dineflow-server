@@ -1,6 +1,8 @@
 const TableLock = require('../models/TableLock');
 const Restaurant = require('../models/Restaurant');
 const AppError = require('../utils/appError');
+const { getIO } = require('../sockets/socketServer');
+const logger = require('../config/logger');
 
 // @desc    Lock a table temporarily
 // @route   POST /api/tables/:tableID/lock
@@ -51,6 +53,19 @@ const lockTable = async (req, res, next) => {
       locked_by: req.user.id,
     });
 
+    // Broadcast lock via socket
+    try {
+      const io = getIO();
+      io.to(`restaurant:${restaurant_id}`).emit('table_locked', {
+        tableId: tableId,
+        lockedBy: req.user.id,
+        lockUntil: lockUntil,
+        timestamp: new Date(),
+      });
+    } catch (socketError) {
+      logger.error('Socket broadcast error:', socketError);
+    }
+
     res.status(200).json({
       status: 'success',
       data: {
@@ -84,6 +99,18 @@ const releaseTableLock = async (req, res, next) => {
 
     if (!tableLock) {
       return next(new AppError('Không tìm thấy lock hoặc bạn không có quyền', 404));
+    }
+
+    // Broadcast release via socket
+    try {
+      const io = getIO();
+      io.to(`restaurant:${restaurant_id}`).emit('table_released', {
+        tableId: tableId,
+        releasedBy: req.user.id,
+        timestamp: new Date(),
+      });
+    } catch (socketError) {
+      logger.error('Socket broadcast error:', socketError);
     }
 
     res.status(200).json({

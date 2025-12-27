@@ -2,6 +2,8 @@ const Reservation = require('../models/Reservation');
 const Restaurant = require('../models/Restaurant');
 const TableLock = require('../models/TableLock');
 const AppError = require('../utils/appError');
+const { getIO } = require('../sockets/socketServer');
+const logger = require('../config/logger');
 
 // Check table availability helper
 const checkTableAvailability = async (
@@ -95,6 +97,24 @@ const createReservation = async (req, res, next) => {
       status: 'confirmed',
       lifecycle: [{ action: 'booked', timestamp: new Date() }],
     });
+
+    // Broadcast reservation update via socket
+    try {
+      const io = getIO();
+      io.to(`restaurant:${restaurant_id}`).emit('reservation_update', {
+        type: 'created',
+        tableId: table_id,
+        reservationId: reservation._id,
+        userId: req.user.id,
+        startTime: startTime,
+        endTime: endTime,
+        status: 'confirmed',
+        timestamp: new Date(),
+      });
+      logger.info(`Broadcast reservation created for table ${table_id}`);
+    } catch (error) {
+      logger.error('Socket broadcast error:', socketError);
+    }
 
     // 7. Delete table lock if have
     if (existingLock) {
@@ -222,6 +242,20 @@ const updateReservationStatus = async (req, res, next) => {
 
     await reservation.save();
 
+    // Broadcast status update via socket
+    try {
+      const io = getIO();
+      io.to(`restaurant:${reservation.restaurant_id}`).emit('reservation_update', {
+        type: 'status_changed',
+        tableId: reservation.table_id,
+        reservationId: reservation._id,
+        status: status,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      logger.error('Socket broadcast error:', socketError);
+    }
+
     res.status(200).json({
       status: 'success',
       data: { reservation },
@@ -258,6 +292,19 @@ const checkInReservation = async (req, res, next) => {
     reservation.status = 'confirmed'; // Keep the confirmed status
 
     await reservation.save();
+
+    // Broadcast check-in via socket
+    try {
+      const io = getIO();
+      io.to(`restaurant:${reservation.restaurant_id}`).emit('table_status', {
+        tableId: reservation.table_id,
+        status: 'occupied',
+        reservationId: reservation._id,
+        timestamp: new Date(),
+      });
+    } catch (socketError) {
+      logger.error('Socket broadcast error:', socketError);
+    }
 
     res.status(200).json({
       status: 'success',
